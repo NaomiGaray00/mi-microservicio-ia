@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 from textblob import TextBlob
 import nltk
-import os  # <--- Agregamos esto para leer variables de la nube
+import os
 
-# Descarga de recursos necesaria para la IA
+# Recursos necesarios
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 
@@ -13,24 +13,39 @@ app = Flask(__name__)
 def analizar():
     try:
         datos = request.get_json()
-        if not datos or 'texto' not in datos:
-            return jsonify({"error": "No se envió el campo 'texto'"}), 400
-            
-        texto = datos.get('texto', '')
-        blob = TextBlob(texto)
+        textoOriginal = datos.get('texto', '')
         
+        # --- LA MAGIA DE LA IA ---
+        blob = TextBlob(textoOriginal)
+        
+        try:
+            # Intentamos traducir al inglés para un análisis preciso
+            # Si ya está en inglés o falla, seguirá con el original
+            textoTraducido = str(blob.translate(to='en'))
+            blob = TextBlob(textoTraducido)
+        except:
+            pass 
+        # -------------------------
+
         polaridad = blob.sentiment.polarity
-        resultado = "Positivo" if polaridad > 0.1 else "Negativo" if polaridad < -0.1 else "Neutral"
+        
+        # Ajustamos los rangos para mayor sensibilidad
+        if polaridad > 0.05:
+            resultado = "Positivo"
+        elif polaridad < -0.05:
+            resultado = "Negativo"
+        else:
+            resultado = "Neutral"
         
         return jsonify({
             "status": "success",
             "sentimiento": resultado,
-            "puntuacion": round(polaridad, 2)
+            "puntuacion": round(polaridad, 2),
+            "texto_analizado": str(blob) # Verás cómo la IA lo "leyó"
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    # Esto le dice a tu código: "Usa el puerto que te dé la nube, o el 5000 si estás en mi PC"
     puerto = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=puerto)

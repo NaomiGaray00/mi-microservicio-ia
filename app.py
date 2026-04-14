@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 from textblob import TextBlob
 import nltk
+import os  # <--- Agregamos esto para leer variables de la nube
 
-# Esto descarga los archivos que le faltan a Railway para entender el texto
+# Descarga de recursos necesaria para la IA
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 
@@ -18,7 +19,6 @@ def analizar():
         texto = datos.get('texto', '')
         blob = TextBlob(texto)
         
-        # Análisis simple de polaridad
         polaridad = blob.sentiment.polarity
         resultado = "Positivo" if polaridad > 0.1 else "Negativo" if polaridad < -0.1 else "Neutral"
         
@@ -31,4 +31,6 @@ def analizar():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # Esto le dice a tu código: "Usa el puerto que te dé la nube, o el 5000 si estás en mi PC"
+    puerto = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=puerto)
